@@ -11,7 +11,7 @@ export const PRICING: Record<
   "google/gemini-2.5-flash": { input: 0.3, output: 2.5 },
   "google/gemini-3-flash": { input: 0.5, output: 3 },
   // Not checked against Google's price list: assume Gemini 3 Flash pricing.
-  "google/gemini-3.5-flash": { input: 0.5, output: 3 },
+  "google/gemini-3.5-flash-lite": { input: 0.5, output: 3 },
   "google/gemini-3.8-flash": { input: 0.5, output: 3 },
 };
 
