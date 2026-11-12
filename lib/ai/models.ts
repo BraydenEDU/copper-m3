@@ -13,6 +13,11 @@ export const MODELS = [
     googleId: "gemini-3-flash-preview",
   },
   {
+    id: "google/gemini-3.5-flash",
+    label: "Gemini 3.5 Flash (a fallback when the free daily limit runs out)",
+    googleId: "gemini-3.5-flash",
+  },
+  {
     id: "google/gemini-3.8-flash",
     label: "Gemini 3.8 Flash (newest, open to new AI Studio keys)",
     googleId: "gemini-3.8-flash",
