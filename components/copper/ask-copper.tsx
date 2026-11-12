@@ -9,6 +9,7 @@ import {
   ArrowRightIcon,
   ArrowUpIcon,
   BrainIcon,
+  FileTextIcon,
   MessageCircleIcon,
   TriangleAlertIcon,
   WrenchIcon,
@@ -34,6 +35,7 @@ import {
   TOOL_LABELS,
 } from "@/lib/copper/assistant/progress";
 import { formatUsd, getPlans, getProducts } from "@/lib/copper/catalog";
+import { splitCitations } from "@/lib/copper/citations";
 import { cn } from "@/lib/utils";
 
 const STARTERS = [
@@ -383,7 +385,7 @@ function Answer({
             </div>
           )}
           <p className="text-sm whitespace-pre-wrap">
-            {reply}
+            <CitedReply text={reply} />
             {working && (
               <span className="bg-primary ml-0.5 inline-block h-4 w-0.5 animate-pulse align-middle" />
             )}
@@ -420,6 +422,28 @@ function Station({
       </p>
       {children}
     </section>
+  );
+}
+
+/** Turns each [Document title, p. N] citation in a reply into a link to that page. */
+function CitedReply({ text }: { text: string }) {
+  return splitCitations(text).map((part, i) =>
+    part.type === "text" ? (
+      part.text
+    ) : (
+      <a
+        key={i}
+        href={part.url}
+        target="_blank"
+        rel="noopener noreferrer"
+        data-testid="citation"
+        title={`Open ${part.title} at page ${part.page}`}
+        className="bg-accent/15 text-primary hover:bg-accent/25 mx-0.5 inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs font-semibold whitespace-nowrap"
+      >
+        <FileTextIcon className="size-3" />
+        {part.title}, p. {part.page}
+      </a>
+    ),
   );
 }
 
@@ -605,6 +629,37 @@ function ToolOutput({ name, output }: { name: string; output: any }) {
       </div>
     );
   }
+  if (name === "search_docs" && output?.passages)
+    return (
+      <ol className="space-y-2 text-xs">
+        {output.passages.map((p: any) => (
+          <li
+            key={`${p.url}-${p.text.slice(0, 20)}`}
+            data-testid="doc-passage"
+            className="bg-background rounded-lg border p-2"
+          >
+            <div className="flex items-start justify-between gap-2">
+              <a
+                href={p.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary inline-flex items-center gap-1 font-semibold hover:underline"
+              >
+                <FileTextIcon className="size-3 shrink-0" />
+                {p.title}, page {p.page}
+              </a>
+              <span
+                className="text-muted-foreground shrink-0 font-mono"
+                title="How closely this passage matches the question (0 to 1)"
+              >
+                {Number(p.score).toFixed(2)}
+              </span>
+            </div>
+            <p className="text-muted-foreground mt-1 line-clamp-3">{p.text}</p>
+          </li>
+        ))}
+      </ol>
+    );
   // A tool without its own layout yet: show what came back as plain text.
   return (
     <pre className="max-h-48 overflow-auto text-xs whitespace-pre-wrap">

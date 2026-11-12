@@ -11,6 +11,7 @@ import {
   type ProductId,
 } from "@/lib/copper/catalog";
 import { readInventory } from "@/lib/copper/inventory";
+import { searchDocs } from "@/lib/copper/search-docs";
 
 export type ProductList = {
   products: {
@@ -200,5 +201,19 @@ export const copperTools = {
       "Checks today's stock for a Copper product, for every color or just one.",
     inputSchema: checkAvailabilityInput,
     execute: async (input) => checkAvailability(input),
+  }),
+  // Module 3: answers from the customer documents instead of from memory.
+  search_docs: tool({
+    description:
+      "Searches Copper's customer documents (the Copper Home and Copper Notes user guides, the Terms and Conditions, and the Copper Plus FAQ) for setup, troubleshooting, error codes, warranty, returns, refunds, privacy and other policy questions. Returns the 5 closest passages, each with its document title, page number and a link to that page.",
+    inputSchema: z.object({
+      question: z
+        .string()
+        .min(1)
+        .describe(
+          "The shopper's question, rewritten to stand on its own (e.g. 'What does error C-47 mean on Copper Home?').",
+        ),
+    }),
+    execute: async ({ question }) => searchDocs(question),
   }),
 };
