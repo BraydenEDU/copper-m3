@@ -1,8 +1,13 @@
-import type { ModelId } from "@/lib/ai/models";
+import type { EmbeddingModelId, ModelId } from "@/lib/ai/models";
 
 // US dollars per million tokens: Google's list prices as of 2026-10.
 // Billing may differ slightly; these are for cost estimates.
-export const PRICING: Record<ModelId, { input: number; output: number }> = {
+export const PRICING: Record<
+  ModelId | EmbeddingModelId,
+  { input: number; output: number }
+> = {
+  // Embeddings are priced on input only.
+  "google/gemini-embedding-001": { input: 0.15, output: 0 },
   "google/gemini-2.5-flash": { input: 0.3, output: 2.5 },
   "google/gemini-3-flash": { input: 0.5, output: 3 },
   // Not checked against Google's price list: assumes Gemini 3 Flash pricing.
@@ -10,7 +15,7 @@ export const PRICING: Record<ModelId, { input: number; output: number }> = {
 };
 
 export function costUsd(
-  model: ModelId,
+  model: ModelId | EmbeddingModelId,
   inputTokens: number,
   outputTokens: number,
 ): number {

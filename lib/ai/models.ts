@@ -22,6 +22,20 @@ export const MODELS = [
 export type ModelId = (typeof MODELS)[number]["id"];
 
 /**
+ * The model that turns text into an embedding: a list of numbers that places
+ * text with a similar meaning close together, so passages can be searched by
+ * meaning instead of exact words.
+ */
+export const EMBEDDING_MODEL = {
+  id: "google/gemini-embedding-001",
+  googleId: "gemini-embedding-001",
+  /** Shorter than the 3072-number default: a smaller file, nearly the same search quality. */
+  dimensions: 768,
+} as const;
+
+export type EmbeddingModelId = (typeof EMBEDDING_MODEL)["id"];
+
+/**
  * The model used when a call doesn't name one. Google no longer opens
  * gemini-2.5-flash to new AI Studio keys, so new keys default to 3.8 Flash.
  * Set AI_MODEL to pick another approved model.

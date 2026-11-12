@@ -1,7 +1,13 @@
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
-import { generateText, Output, streamText } from "ai";
+import { embedMany, generateText, Output, streamText } from "ai";
 import type { z } from "zod";
-import { defaultModel, MODELS, type ModelId } from "@/lib/ai/models";
+import {
+  defaultModel,
+  EMBEDDING_MODEL,
+  type EmbeddingModelId,
+  MODELS,
+  type ModelId,
+} from "@/lib/ai/models";
 import { costUsd } from "@/lib/ai/pricing";
 
 // Every model call in the app goes through this file, so each one is logged
@@ -36,7 +42,7 @@ type TextOptions = DistributiveOmit<
 export type AiCallRow = {
   module: number;
   feature: string;
-  model: ModelId;
+  model: ModelId | EmbeddingModelId;
   input_tokens: number | null;
   output_tokens: number | null;
   cost_usd: number | null;
@@ -45,15 +51,20 @@ export type AiCallRow = {
   created_at: string;
 };
 
-function languageModel(model: ModelId) {
+function google() {
   const googleKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY?.trim();
   if (!googleKey) throw new AiNotConfiguredError();
+  return createGoogleGenerativeAI({ apiKey: googleKey });
+}
+
+function languageModel(model: ModelId) {
+  const provider = google();
   const entry = MODELS.find((m) => m.id === model);
   const id =
     entry && "googleId" in entry
       ? entry.googleId
       : model.slice("google/".length);
-  return createGoogleGenerativeAI({ apiKey: googleKey })(id);
+  return provider(id);
 }
 
 /** Prints one line per model call, so the cost and time are visible. */
@@ -64,7 +75,11 @@ async function logCall(row: AiCallRow): Promise<void> {
 type Usage = { inputTokens?: number; outputTokens?: number };
 
 /** Builds the ai_calls row for a call that started at `started`. */
-function rowFor(info: CallInfo, model: ModelId, started: number) {
+function rowFor(
+  info: CallInfo,
+  model: ModelId | EmbeddingModelId,
+  started: number,
+) {
   return (ok: boolean, usage?: Usage): AiCallRow => {
     const input = usage?.inputTokens ?? null;
     const output = usage?.outputTokens ?? null;
@@ -145,6 +160,62 @@ export function callStream(info: CallInfo, options: StreamOptions) {
     onFinish: ({ totalUsage }) => logCall(row(true, totalUsage)),
     onError: () => logCall(row(false)),
   });
+}
+
+/**
+ * What the text is for: "document" for passages being stored for search,
+ * "query" for a question being searched with. Gemini embeds each a little
+ * differently so questions land near the passages that answer them.
+ */
+export type EmbedPurpose = "document" | "query";
+
+/** Scales a vector to length 1, so comparing two is a plain dot product. */
+function normalize(vector: number[]): number[] {
+  const length = Math.hypot(...vector);
+  return length === 0 ? vector : vector.map((x) => x / length);
+}
+
+/**
+ * Embeds many texts with Gemini's embedding model, in as few requests as
+ * possible. Returns one normalized vector per text, in the same order.
+ * Example: callEmbedMany({ module: 3, feature: "embed-passages" }, texts, "document")
+ */
+export async function callEmbedMany(
+  info: Omit<CallInfo, "model">,
+  values: string[],
+  purpose: EmbedPurpose,
+): Promise<number[][]> {
+  const row = rowFor(info, EMBEDDING_MODEL.id, performance.now());
+  try {
+    const result = await embedMany({
+      model: google().embeddingModel(EMBEDDING_MODEL.googleId),
+      values,
+      providerOptions: {
+        google: {
+          outputDimensionality: EMBEDDING_MODEL.dimensions,
+          taskType:
+            purpose === "document" ? "RETRIEVAL_DOCUMENT" : "RETRIEVAL_QUERY",
+        },
+      },
+    });
+    await logCall(
+      row(true, { inputTokens: result.usage.tokens, outputTokens: 0 }),
+    );
+    return result.embeddings.map(normalize);
+  } catch (error) {
+    if (!(error instanceof AiNotConfiguredError)) await logCall(row(false));
+    throw error;
+  }
+}
+
+/** Embeds one text. Example: callEmbed({ module: 3, feature: "search" }, question, "query") */
+export async function callEmbed(
+  info: Omit<CallInfo, "model">,
+  value: string,
+  purpose: EmbedPurpose,
+): Promise<number[]> {
+  const [embedding] = await callEmbedMany(info, [value], purpose);
+  return embedding;
 }
 
 // Asking for some thinking (rather than letting the model decide) is what
