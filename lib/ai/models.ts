@@ -12,15 +12,21 @@ export const MODELS = [
     label: "Gemini 3 Flash (newer, thinks out loud less often)",
     googleId: "gemini-3-flash-preview",
   },
+  {
+    id: "google/gemini-3.8-flash",
+    label: "Gemini 3.8 Flash (newest, open to new AI Studio keys)",
+    googleId: "gemini-3.8-flash",
+  },
 ] as const;
 
 export type ModelId = (typeof MODELS)[number]["id"];
 
 /**
- * The model used when a call doesn't name one. 2.5 Flash writes a summary of
- * its thinking for every question, which Ask Copper shows students.
+ * The model used when a call doesn't name one. Google no longer opens
+ * gemini-2.5-flash to new AI Studio keys, so new keys default to 3.8 Flash.
+ * Set AI_MODEL to pick another approved model.
  */
-export const DEFAULT_MODEL: ModelId = "google/gemini-2.5-flash";
+export const DEFAULT_MODEL: ModelId = "google/gemini-3.8-flash";
 
 /** AI_MODEL if it names an approved model, otherwise the default. */
 export function defaultModel(): ModelId {
